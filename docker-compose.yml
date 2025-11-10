@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  rss-feed-filter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rss-feed-filter
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist SQLite database and data
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/onboarding"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - rss-network
+
+networks:
+  rss-network:
+    driver: bridge
+

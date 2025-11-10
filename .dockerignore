@@ -1,0 +1,69 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Testing
+coverage
+.nyc_output
+
+# Next.js
+.next/
+out/
+build
+dist
+
+# Production
+.vercel
+.netlify
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+*.log
+logs
+
+# Local env files
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+
+# Data (will be mounted as volume)
+data/
+
+# Scripts
+scripts/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
