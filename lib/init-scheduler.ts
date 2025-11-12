@@ -3,18 +3,18 @@ import { Scheduler } from "@/lib/scheduler";
 let scheduler: Scheduler | null = null;
 
 export function initScheduler(): void {
-  if (scheduler) {
-    console.log("Scheduler already initialized");
+	if (scheduler) {
+		console.log("Scheduler already initialized");
 
-    return;
-  }
+		return;
+	}
 
-  scheduler = new Scheduler();
-  scheduler.start();
+	scheduler = new Scheduler();
+	scheduler.start();
 
-  console.log("Scheduler initialized and started");
+	console.log("Scheduler initialized and started");
 }
 
 export function getScheduler(): Scheduler | null {
-  return scheduler;
+	return scheduler;
 }

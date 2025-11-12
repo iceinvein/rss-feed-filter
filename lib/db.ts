@@ -11,22 +11,22 @@ mkdirSync(dirname(DB_PATH), { recursive: true });
 let db: Database.Database | null = null;
 
 function getDb(): Database.Database {
-  if (!db) {
-    db = new Database(DB_PATH);
-    // Enable WAL mode for better concurrency
-    db.pragma("journal_mode = WAL");
-    // Set busy timeout to 5 seconds
-    db.pragma("busy_timeout = 5000");
-  }
+	if (!db) {
+		db = new Database(DB_PATH);
+		// Enable WAL mode for better concurrency
+		db.pragma("journal_mode = WAL");
+		// Set busy timeout to 5 seconds
+		db.pragma("busy_timeout = 5000");
+	}
 
-  return db;
+	return db;
 }
 
 // Initialize schema
 function initializeSchema() {
-  const database = getDb();
+	const database = getDb();
 
-  database.exec(`
+	database.exec(`
     -- Settings table
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
@@ -73,29 +73,29 @@ function initializeSchema() {
     CREATE INDEX IF NOT EXISTS idx_notifications_guid ON notifications(guid);
   `);
 
-  // Insert default settings if not exists
-  const settingsCount = database
-    .prepare("SELECT COUNT(*) as count FROM settings")
-    .get() as { count: number };
+	// Insert default settings if not exists
+	const settingsCount = database
+		.prepare("SELECT COUNT(*) as count FROM settings")
+		.get() as { count: number };
 
-  if (settingsCount.count === 0) {
-    const defaultSettings = {
-      feedUrl: "https://hdencode.org/feed/",
-      cronSchedule: "*/5 * * * *",
-      discordWebhookUrl: "",
-      enableNotifications: "true",
-      enableScheduler: "true",
-      onboardingComplete: "false",
-    };
+	if (settingsCount.count === 0) {
+		const defaultSettings = {
+			feedUrl: "https://hdencode.org/feed/",
+			cronSchedule: "*/5 * * * *",
+			discordWebhookUrl: "",
+			enableNotifications: "true",
+			enableScheduler: "true",
+			onboardingComplete: "false",
+		};
 
-    const insert = database.prepare(
-      "INSERT INTO settings (key, value) VALUES (?, ?)",
-    );
+		const insert = database.prepare(
+			"INSERT INTO settings (key, value) VALUES (?, ?)",
+		);
 
-    for (const [key, value] of Object.entries(defaultSettings)) {
-      insert.run(key, value);
-    }
-  }
+		for (const [key, value] of Object.entries(defaultSettings)) {
+			insert.run(key, value);
+		}
+	}
 }
 
 // Initialize on import
@@ -103,292 +103,300 @@ initializeSchema();
 
 // Settings operations
 export const settingsDb = {
-  get(key: string): string | null {
-    const row = getDb()
-      .prepare("SELECT value FROM settings WHERE key = ?")
-      .get(key) as { value: string } | undefined;
+	get(key: string): string | null {
+		const row = getDb()
+			.prepare("SELECT value FROM settings WHERE key = ?")
+			.get(key) as { value: string } | undefined;
 
-    return row?.value || null;
-  },
+		return row?.value || null;
+	},
 
-  set(key: string, value: string): void {
-    getDb()
-      .prepare(
-        "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, unixepoch())",
-      )
-      .run(key, value);
-  },
+	set(key: string, value: string): void {
+		getDb()
+			.prepare(
+				"INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, unixepoch())",
+			)
+			.run(key, value);
+	},
 
-  getAll(): Record<string, string> {
-    const rows = getDb().prepare("SELECT key, value FROM settings").all() as {
-      key: string;
-      value: string;
-    }[];
+	getAll(): Record<string, string> {
+		const rows = getDb().prepare("SELECT key, value FROM settings").all() as {
+			key: string;
+			value: string;
+		}[];
 
-    return Object.fromEntries(rows.map((r) => [r.key, r.value]));
-  },
+		return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+	},
 
-  setMultiple(settings: Record<string, string>): void {
-    const database = getDb();
-    const insert = database.prepare(
-      "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, unixepoch())",
-    );
+	setMultiple(settings: Record<string, string>): void {
+		const database = getDb();
+		const insert = database.prepare(
+			"INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, unixepoch())",
+		);
 
-    const transaction = database.transaction((entries: [string, string][]) => {
-      for (const [key, value] of entries) {
-        insert.run(key, value);
-      }
-    });
+		const transaction = database.transaction((entries: [string, string][]) => {
+			for (const [key, value] of entries) {
+				insert.run(key, value);
+			}
+		});
 
-    transaction(Object.entries(settings));
-  },
+		transaction(Object.entries(settings));
+	},
 };
 
 // Filters operations
 export const filtersDb = {
-  getAll() {
-    const rows = getDb()
-      .prepare("SELECT * FROM filters ORDER BY created_at")
-      .all() as {
-      id: string;
-      name: string;
-      enabled: number;
-      title_includes: string;
-      title_excludes: string;
-      description_includes: string;
-      description_excludes: string;
-    }[];
+	getAll() {
+		const rows = getDb()
+			.prepare("SELECT * FROM filters ORDER BY created_at")
+			.all() as {
+			id: string;
+			name: string;
+			enabled: number;
+			title_includes: string;
+			title_excludes: string;
+			description_includes: string;
+			description_excludes: string;
+		}[];
 
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      enabled: Boolean(row.enabled),
-      criteria: {
-        titleIncludes: JSON.parse(row.title_includes),
-        titleExcludes: JSON.parse(row.title_excludes),
-        descriptionIncludes: JSON.parse(row.description_includes),
-        descriptionExcludes: JSON.parse(row.description_excludes),
-      },
-    }));
-  },
+		return rows.map((row) => ({
+			id: row.id,
+			name: row.name,
+			enabled: Boolean(row.enabled),
+			criteria: {
+				titleIncludes: JSON.parse(row.title_includes),
+				titleExcludes: JSON.parse(row.title_excludes),
+				descriptionIncludes: JSON.parse(row.description_includes),
+				descriptionExcludes: JSON.parse(row.description_excludes),
+			},
+		}));
+	},
 
-  get(id: string) {
-    const row = getDb()
-      .prepare("SELECT * FROM filters WHERE id = ?")
-      .get(id) as
-      | {
-          id: string;
-          name: string;
-          enabled: number;
-          title_includes: string;
-          title_excludes: string;
-          description_includes: string;
-          description_excludes: string;
-        }
-      | undefined;
+	get(id: string) {
+		const row = getDb().prepare("SELECT * FROM filters WHERE id = ?").get(id) as
+			| {
+					id: string;
+					name: string;
+					enabled: number;
+					title_includes: string;
+					title_excludes: string;
+					description_includes: string;
+					description_excludes: string;
+			  }
+			| undefined;
 
-    if (!row) return null;
+		if (!row) return null;
 
-    return {
-      id: row.id,
-      name: row.name,
-      enabled: Boolean(row.enabled),
-      criteria: {
-        titleIncludes: JSON.parse(row.title_includes),
-        titleExcludes: JSON.parse(row.title_excludes),
-        descriptionIncludes: JSON.parse(row.description_includes),
-        descriptionExcludes: JSON.parse(row.description_excludes),
-      },
-    };
-  },
+		return {
+			id: row.id,
+			name: row.name,
+			enabled: Boolean(row.enabled),
+			criteria: {
+				titleIncludes: JSON.parse(row.title_includes),
+				titleExcludes: JSON.parse(row.title_excludes),
+				descriptionIncludes: JSON.parse(row.description_includes),
+				descriptionExcludes: JSON.parse(row.description_excludes),
+			},
+		};
+	},
 
-  create(filter: {
-    id: string;
-    name: string;
-    enabled: boolean;
-    criteria: {
-      titleIncludes: string[];
-      titleExcludes: string[];
-      descriptionIncludes: string[];
-      descriptionExcludes: string[];
-    };
-  }) {
-    getDb()
-      .prepare(
-        `INSERT INTO filters (id, name, enabled, title_includes, title_excludes, description_includes, description_excludes)
+	create(filter: {
+		id: string;
+		name: string;
+		enabled: boolean;
+		criteria: {
+			titleIncludes: string[];
+			titleExcludes: string[];
+			descriptionIncludes: string[];
+			descriptionExcludes: string[];
+		};
+	}) {
+		getDb()
+			.prepare(
+				`INSERT INTO filters (id, name, enabled, title_includes, title_excludes, description_includes, description_excludes)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        filter.id,
-        filter.name,
-        filter.enabled ? 1 : 0,
-        JSON.stringify(filter.criteria.titleIncludes),
-        JSON.stringify(filter.criteria.titleExcludes),
-        JSON.stringify(filter.criteria.descriptionIncludes),
-        JSON.stringify(filter.criteria.descriptionExcludes),
-      );
-  },
+			)
+			.run(
+				filter.id,
+				filter.name,
+				filter.enabled ? 1 : 0,
+				JSON.stringify(filter.criteria.titleIncludes),
+				JSON.stringify(filter.criteria.titleExcludes),
+				JSON.stringify(filter.criteria.descriptionIncludes),
+				JSON.stringify(filter.criteria.descriptionExcludes),
+			);
+	},
 
-  update(
-    id: string,
-    filter: {
-      name: string;
-      enabled: boolean;
-      criteria: {
-        titleIncludes: string[];
-        titleExcludes: string[];
-        descriptionIncludes: string[];
-        descriptionExcludes: string[];
-      };
-    },
-  ) {
-    getDb()
-      .prepare(
-        `UPDATE filters
+	update(
+		id: string,
+		filter: {
+			name: string;
+			enabled: boolean;
+			criteria: {
+				titleIncludes: string[];
+				titleExcludes: string[];
+				descriptionIncludes: string[];
+				descriptionExcludes: string[];
+			};
+		},
+	) {
+		getDb()
+			.prepare(
+				`UPDATE filters
        SET name = ?, enabled = ?, title_includes = ?, title_excludes = ?,
            description_includes = ?, description_excludes = ?, updated_at = unixepoch()
        WHERE id = ?`,
-      )
-      .run(
-        filter.name,
-        filter.enabled ? 1 : 0,
-        JSON.stringify(filter.criteria.titleIncludes),
-        JSON.stringify(filter.criteria.titleExcludes),
-        JSON.stringify(filter.criteria.descriptionIncludes),
-        JSON.stringify(filter.criteria.descriptionExcludes),
-        id,
-      );
-  },
+			)
+			.run(
+				filter.name,
+				filter.enabled ? 1 : 0,
+				JSON.stringify(filter.criteria.titleIncludes),
+				JSON.stringify(filter.criteria.titleExcludes),
+				JSON.stringify(filter.criteria.descriptionIncludes),
+				JSON.stringify(filter.criteria.descriptionExcludes),
+				id,
+			);
+	},
 
-  delete(id: string) {
-    getDb().prepare("DELETE FROM filters WHERE id = ?").run(id);
-  },
+	delete(id: string) {
+		getDb().prepare("DELETE FROM filters WHERE id = ?").run(id);
+	},
 };
 
 // Processed items operations
 export const processedItemsDb = {
-  has(guid: string): boolean {
-    const row = getDb()
-      .prepare("SELECT 1 FROM processed_items WHERE guid = ?")
-      .get(guid);
+	has(guid: string): boolean {
+		const row = getDb()
+			.prepare("SELECT 1 FROM processed_items WHERE guid = ?")
+			.get(guid);
 
-    return Boolean(row);
-  },
+		return Boolean(row);
+	},
 
-  add(guid: string, title: string) {
-    getDb()
-      .prepare(
-        "INSERT OR IGNORE INTO processed_items (guid, title) VALUES (?, ?)",
-      )
-      .run(guid, title);
-  },
+	add(guid: string, title: string) {
+		getDb()
+			.prepare(
+				"INSERT OR IGNORE INTO processed_items (guid, title) VALUES (?, ?)",
+			)
+			.run(guid, title);
+	},
 
-  getAll() {
-    return getDb()
-      .prepare("SELECT * FROM processed_items ORDER BY processed_at DESC")
-      .all() as {
-      guid: string;
-      title: string;
-      processed_at: number;
-    }[];
-  },
+	getAll() {
+		return getDb()
+			.prepare("SELECT * FROM processed_items ORDER BY processed_at DESC")
+			.all() as {
+			guid: string;
+			title: string;
+			processed_at: number;
+		}[];
+	},
 
-  cleanup(daysToKeep: number = 30) {
-    const cutoffTime =
-      Math.floor(Date.now() / 1000) - daysToKeep * 24 * 60 * 60;
-    const result = getDb()
-      .prepare("DELETE FROM processed_items WHERE processed_at < ?")
-      .run(cutoffTime);
+	cleanup(daysToKeep: number = 30) {
+		const cutoffTime =
+			Math.floor(Date.now() / 1000) - daysToKeep * 24 * 60 * 60;
+		const result = getDb()
+			.prepare("DELETE FROM processed_items WHERE processed_at < ?")
+			.run(cutoffTime);
 
-    return result.changes;
-  },
+		return result.changes;
+	},
 };
 
 // Notifications database operations
 export const notificationsDb = {
-  add(
-    guid: string,
-    title: string,
-    link: string,
-    description: string,
-    pubDate: string,
-    matchedFilters: string[],
-  ) {
-    getDb()
-      .prepare(
-        "INSERT INTO notifications (guid, title, link, description, pub_date, matched_filters) VALUES (?, ?, ?, ?, ?, ?)",
-      )
-      .run(guid, title, link, description, pubDate, JSON.stringify(matchedFilters));
-  },
+	add(
+		guid: string,
+		title: string,
+		link: string,
+		description: string,
+		pubDate: string,
+		matchedFilters: string[],
+	) {
+		getDb()
+			.prepare(
+				"INSERT INTO notifications (guid, title, link, description, pub_date, matched_filters) VALUES (?, ?, ?, ?, ?, ?)",
+			)
+			.run(
+				guid,
+				title,
+				link,
+				description,
+				pubDate,
+				JSON.stringify(matchedFilters),
+			);
+	},
 
-  getAll(limit: number = 100, offset: number = 0, searchQuery?: string) {
-    let query = "SELECT * FROM notifications";
-    const params: any[] = [];
+	getAll(limit: number = 100, offset: number = 0, searchQuery?: string) {
+		let query = "SELECT * FROM notifications";
+		const params: (string | number)[] = [];
 
-    if (searchQuery) {
-      query +=
-        " WHERE title LIKE ? OR description LIKE ? OR matched_filters LIKE ?";
-      const searchPattern = `%${searchQuery}%`;
+		if (searchQuery) {
+			query +=
+				" WHERE title LIKE ? OR description LIKE ? OR matched_filters LIKE ?";
+			const searchPattern = `%${searchQuery}%`;
 
-      params.push(searchPattern, searchPattern, searchPattern);
-    }
+			params.push(searchPattern, searchPattern, searchPattern);
+		}
 
-    query += " ORDER BY sent_at DESC LIMIT ? OFFSET ?";
-    params.push(limit, offset);
+		query += " ORDER BY sent_at DESC LIMIT ? OFFSET ?";
+		params.push(limit, offset);
 
-    return getDb().prepare(query).all(...params) as {
-      id: number;
-      guid: string;
-      title: string;
-      link: string;
-      description: string;
-      pub_date: string;
-      matched_filters: string;
-      sent_at: number;
-    }[];
-  },
+		return getDb()
+			.prepare(query)
+			.all(...params) as {
+			id: number;
+			guid: string;
+			title: string;
+			link: string;
+			description: string;
+			pub_date: string;
+			matched_filters: string;
+			sent_at: number;
+		}[];
+	},
 
-  getCount(searchQuery?: string) {
-    let query = "SELECT COUNT(*) as count FROM notifications";
-    const params: any[] = [];
+	getCount(searchQuery?: string) {
+		let query = "SELECT COUNT(*) as count FROM notifications";
+		const params: (string | number)[] = [];
 
-    if (searchQuery) {
-      query +=
-        " WHERE title LIKE ? OR description LIKE ? OR matched_filters LIKE ?";
-      const searchPattern = `%${searchQuery}%`;
+		if (searchQuery) {
+			query +=
+				" WHERE title LIKE ? OR description LIKE ? OR matched_filters LIKE ?";
+			const searchPattern = `%${searchQuery}%`;
 
-      params.push(searchPattern, searchPattern, searchPattern);
-    }
+			params.push(searchPattern, searchPattern, searchPattern);
+		}
 
-    const result = getDb().prepare(query).get(...params) as { count: number };
+		const result = getDb()
+			.prepare(query)
+			.get(...params) as { count: number };
 
-    return result.count;
-  },
+		return result.count;
+	},
 
-  delete(id: number) {
-    const result = getDb()
-      .prepare("DELETE FROM notifications WHERE id = ?")
-      .run(id);
+	delete(id: number) {
+		const result = getDb()
+			.prepare("DELETE FROM notifications WHERE id = ?")
+			.run(id);
 
-    return result.changes;
-  },
+		return result.changes;
+	},
 
-  cleanup(daysToKeep: number = 30) {
-    const cutoffTime =
-      Math.floor(Date.now() / 1000) - daysToKeep * 24 * 60 * 60;
-    const result = getDb()
-      .prepare("DELETE FROM notifications WHERE sent_at < ?")
-      .run(cutoffTime);
+	cleanup(daysToKeep: number = 30) {
+		const cutoffTime =
+			Math.floor(Date.now() / 1000) - daysToKeep * 24 * 60 * 60;
+		const result = getDb()
+			.prepare("DELETE FROM notifications WHERE sent_at < ?")
+			.run(cutoffTime);
 
-    return result.changes;
-  },
+		return result.changes;
+	},
 
-  deleteAll() {
-    const result = getDb().prepare("DELETE FROM notifications").run();
+	deleteAll() {
+		const result = getDb().prepare("DELETE FROM notifications").run();
 
-    return result.changes;
-  },
+		return result.changes;
+	},
 };
 
 export default getDb();
-

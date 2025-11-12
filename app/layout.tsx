@@ -1,67 +1,65 @@
-import type { Metadata, Viewport } from "next";
-
 import clsx from "clsx";
+import type { Metadata, Viewport } from "next";
 
 import "@/styles/globals.css";
 
-import { Providers } from "./providers";
-
-import { siteConfig } from "@/config/site";
-import { fontSans } from "@/config/fonts";
 import { Navbar } from "@/components/navbar";
+import { fontSans } from "@/config/fonts";
+import { siteConfig } from "@/config/site";
 import { initScheduler } from "@/lib/init-scheduler";
+import { Providers } from "./providers";
 
 // Initialize scheduler on server startup
 if (typeof window === "undefined") {
-  initScheduler();
+	initScheduler();
 }
 
 export const metadata: Metadata = {
-  title: {
-    default: siteConfig.name,
-    template: `%s - ${siteConfig.name}`,
-  },
-  description: siteConfig.description,
-  icons: {
-    icon: "/favicon.ico",
-  },
+	title: {
+		default: siteConfig.name,
+		template: `%s - ${siteConfig.name}`,
+	},
+	description: siteConfig.description,
+	icons: {
+		icon: "/favicon.ico",
+	},
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "white" },
-    { media: "(prefers-color-scheme: dark)", color: "black" },
-  ],
+	themeColor: [
+		{ media: "(prefers-color-scheme: light)", color: "white" },
+		{ media: "(prefers-color-scheme: dark)", color: "black" },
+	],
 };
 
 export default function RootLayout({
-  children,
+	children,
 }: {
-  children: React.ReactNode;
+	children: React.ReactNode;
 }) {
-  return (
-    <html suppressHydrationWarning lang="en">
-      <head />
-      <body
-        className={clsx(
-          "min-h-screen text-foreground bg-background font-sans antialiased",
-          fontSans.variable,
-        )}
-      >
-        <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
-          <div className="relative flex flex-col h-screen">
-            <Navbar />
-            <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">
-              {children}
-            </main>
-            <footer className="w-full flex items-center justify-center py-3">
-              <span className="text-default-600 text-sm">
-                © {new Date().getFullYear()} RSS Feed Filter
-              </span>
-            </footer>
-          </div>
-        </Providers>
-      </body>
-    </html>
-  );
+	return (
+		<html suppressHydrationWarning lang="en">
+			<head />
+			<body
+				className={clsx(
+					"min-h-screen bg-background font-sans text-foreground antialiased",
+					fontSans.variable,
+				)}
+			>
+				<Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
+					<div className="relative flex h-screen flex-col">
+						<Navbar />
+						<main className="container mx-auto max-w-7xl flex-grow px-6 pt-16">
+							{children}
+						</main>
+						<footer className="flex w-full items-center justify-center py-3">
+							<span className="text-default-600 text-sm">
+								© {new Date().getFullYear()} RSS Feed Filter
+							</span>
+						</footer>
+					</div>
+				</Providers>
+			</body>
+		</html>
+	);
 }
