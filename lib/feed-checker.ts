@@ -3,7 +3,7 @@ import type { FeedItem, Filter } from "@/types/feed";
 import Parser from "rss-parser";
 
 import { appConfig } from "@/config/app";
-import { filtersDb, processedItemsDb } from "@/lib/db";
+import { filtersDb, notificationsDb, processedItemsDb } from "@/lib/db";
 import { applyFilters } from "@/lib/filter";
 import { DiscordNotifier } from "@/lib/discord-notifier";
 
@@ -86,7 +86,29 @@ export class FeedChecker {
         console.log(`Sending notification for ${matches.length} matched items`);
 
         // Send batch notification
-        await this.notifier.sendBatchNotification(matches);
+        const success = await this.notifier.sendBatchNotification(matches);
+
+        // Save notifications to database if sent successfully
+        if (success) {
+          for (const { item, filters } of matches) {
+            notificationsDb.add(
+              item.guid,
+              item.title,
+              item.link,
+              item.description || item.content || "",
+              item.pubDate,
+              filters.map((f) => f.name),
+            );
+          }
+          console.log(`Saved ${matches.length} notifications to database`);
+
+          // Cleanup old notifications (older than 7 days)
+          const deleted = notificationsDb.cleanup(7);
+
+          if (deleted > 0) {
+            console.log(`Cleaned up ${deleted} old notifications (>7 days)`);
+          }
+        }
       } else {
         console.log("No items matched filters");
       }

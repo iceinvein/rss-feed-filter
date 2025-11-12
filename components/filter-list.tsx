@@ -6,6 +6,7 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Switch } from "@heroui/switch";
 import { Chip } from "@heroui/chip";
+import { Target } from "lucide-react";
 
 interface FilterListProps {
   filters: Filter[];
@@ -47,7 +48,7 @@ export function FilterList({
       <CardBody className="gap-3 max-h-[600px] overflow-y-auto">
         {filters.length === 0 ? (
           <div className="text-center py-8">
-            <div className="text-5xl mb-3">🎯</div>
+            <Target className="w-12 h-12 mx-auto mb-3 text-default-400" />
             <p className="text-sm text-default-500">
               No filters yet. Create one to start filtering.
             </p>

@@ -24,6 +24,7 @@ docker-compose logs -f
 ```
 
 You should see:
+
 ```
 ✓ Starting...
 ✓ Ready in XXXms
@@ -34,6 +35,7 @@ Press Ctrl+C to exit logs.
 ### 2. Access the Web Interface
 
 Open your browser and go to:
+
 ```
 http://localhost:3000
 ```
@@ -43,6 +45,7 @@ http://localhost:3000
 On first launch, you'll see a **Setup Wizard** with 3 steps:
 
 #### Step 1: Discord Webhook
+
 1. Open Discord and go to your server
 2. Right-click the channel where you want notifications
 3. Click **Edit Channel** → **Integrations** → **Webhooks**
@@ -53,11 +56,13 @@ On first launch, you'll see a **Setup Wizard** with 3 steps:
 8. Click **Next**
 
 #### Step 2: RSS Feed Configuration
-1. Enter the RSS feed URL (default: https://hdencode.org/feed/)
+
+1. Enter the RSS feed URL (default: <https://hdencode.org/feed/>)
 2. Set the check frequency using cron syntax (default: every 5 minutes)
 3. Click **Next**
 
 #### Step 3: Review & Complete
+
 1. Review your settings
 2. Click **Complete Setup**
 3. The app will reload and start monitoring!
@@ -80,6 +85,7 @@ On first launch, you'll see a **Setup Wizard** with 3 steps:
 Click the **"Check Now"** button in the Scheduler Control panel.
 
 The app will:
+
 1. Fetch the RSS feed
 2. Apply your filters
 3. Send Discord notifications for any matches
@@ -91,6 +97,7 @@ Check your Discord channel - you should see notifications! 🎉
 ### Customize Settings
 
 Click **Settings** in the navbar to update:
+
 - RSS feed URL
 - Check frequency (cron schedule)
 - Discord webhook URL
@@ -100,6 +107,7 @@ Click **Settings** in the navbar to update:
 ### Add More Filters
 
 Create multiple filters for different types of content:
+
 - TV shows by name and quality
 - Movies by genre and format
 - Specific release groups
@@ -107,6 +115,7 @@ Create multiple filters for different types of content:
 ### Monitor the Feed
 
 The main page shows:
+
 - **Total Items** - All items in the feed
 - **Matched Items** - Items passing your filters
 - **Active Filters** - Number of enabled filters
@@ -171,6 +180,7 @@ make shell
    - At least one filter must be enabled
 
 4. **Check the logs**
+
    ```bash
    docker-compose logs -f
    ```
@@ -180,6 +190,7 @@ make shell
 ### Application won't start?
 
 1. **Check if port 3000 is already in use**
+
    ```bash
    # On macOS/Linux
    lsof -i :3000
@@ -189,11 +200,13 @@ make shell
    ```
 
 2. **View detailed logs**
+
    ```bash
    docker-compose logs
    ```
 
 3. **Rebuild from scratch**
+
    ```bash
    docker-compose down -v
    docker-compose up -d --build
@@ -202,22 +215,27 @@ make shell
 ### Can't access web interface?
 
 1. **Verify container is running**
+
    ```bash
    docker-compose ps
    ```
+
    Status should be "Up"
 
 2. **Check if you can access the API**
+
    ```bash
    curl http://localhost:3000/api/feed
    ```
 
 3. **Try a different port**
    Edit `docker-compose.yml`:
+
    ```yaml
    ports:
      - "3001:3000"  # Use port 3001 instead
    ```
+
    Then access: `http://localhost:3001`
 
 ## Need Help?
@@ -236,4 +254,3 @@ make shell
 5. **Backup your data** - The `data/` directory contains all your settings
 
 Enjoy your automated RSS feed monitoring! 🎉
-

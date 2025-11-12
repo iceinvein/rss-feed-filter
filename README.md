@@ -15,10 +15,12 @@ A long-running server application that periodically checks RSS feeds, applies cu
 
 ## Technologies Used
 
-- [Next.js 15](https://nextjs.org/) - Full-stack React framework
+- [Next.js 16](https://nextjs.org/) - Full-stack React framework
+- [React 19](https://react.dev/) - UI library
 - [HeroUI v2](https://heroui.com/) - UI component library
-- [Tailwind CSS](https://tailwindcss.com/) - Styling
+- [Tailwind CSS v4](https://tailwindcss.com/) - Styling
 - [TypeScript](https://www.typescriptlang.org/) - Type safety
+- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) - SQLite database with WAL mode
 - [node-cron](https://github.com/node-cron/node-cron) - Job scheduling
 - [rss-parser](https://github.com/rbren/rss-parser) - RSS feed parsing
 
@@ -83,9 +85,10 @@ The scheduler will start automatically when the server starts.
 
 Open [http://localhost:3000](http://localhost:3000) to:
 
-- **Settings** - Configure feed URL, cron schedule, Teams webhook, and toggles
+- **Settings** - Configure feed URL, cron schedule, Discord webhook, and toggles
 - **Filters** - Create and manage filter rules
 - **Feed Items** - View filtered feed items in real-time
+- **Notifications** - View history of sent notifications
 - **Scheduler Control** - Manually trigger feed checks and monitor status
 
 ### Managing Settings
@@ -98,7 +101,7 @@ Click the **"Settings"** button in the navbar to configure:
 - **Enable Notifications** - Toggle Discord messages on/off
 - **Enable Scheduler** - Toggle automatic checking on/off
 
-Settings are saved to `./data/settings.json` and take effect immediately (scheduler may need restart for cron changes).
+Settings are saved to the SQLite database and take effect immediately (scheduler may need restart for cron changes).
 
 ### Creating Filters
 
@@ -120,56 +123,65 @@ Settings are saved to `./data/settings.json` and take effect immediately (schedu
 1. **Scheduler runs** at the configured interval (default: every 5 minutes)
 2. **Fetches RSS feed** from the configured URL
 3. **Filters new items** using your enabled filters
-4. **Sends Teams notification** for items that match
+4. **Sends Discord notification** for items that match
 5. **Tracks processed items** to prevent duplicate notifications
 6. **Cleans up old data** (keeps last 30 days)
 
 ## Data Storage
 
-All data is stored in the `./data` directory:
+All data is stored in a SQLite database in the `./data` directory:
 
-- `settings.json` - Application settings (feed URL, cron schedule, webhook, etc.)
-- `filters.json` - Your filter configurations
-- `processed-items.json` - Tracking of notified items
+- `rss-filter.db` - SQLite database containing:
+  - **settings** - Application settings (feed URL, cron schedule, webhook, etc.)
+  - **filters** - Your filter configurations
+  - **processed_items** - Tracking of notified items to prevent duplicates
+  - **notifications** - History of sent notifications
+- `rss-filter.db-shm` - Shared memory file (SQLite WAL mode)
+- `rss-filter.db-wal` - Write-ahead log file (SQLite WAL mode)
 
-These files are created automatically on first run.
-
-**Priority:** Settings UI > `settings.json` > `.env` file > defaults
+The database is created automatically on first run with default settings. All configuration is managed through the web UI.
 
 ## Deployment
+
+### Docker (Recommended)
+
+The application includes a production-ready Dockerfile and docker-compose.yml:
+
+```bash
+# Start the application
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the application
+docker-compose down
+```
+
+See [DOCKER.md](./DOCKER.md) for detailed Docker deployment instructions.
 
 ### Vercel / Netlify / Railway
 
 1. Push your code to GitHub
 2. Connect your repository to your hosting platform
-3. Add environment variables in the platform's dashboard
-4. Deploy!
+3. Deploy!
 
-The scheduler will start automatically on deployment.
-
-### Docker (Optional)
-
-Create a `Dockerfile`:
-
-```dockerfile
-FROM oven/bun:latest
-WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install
-COPY . .
-RUN bun run build
-EXPOSE 3000
-CMD ["bun", "run", "start"]
-```
-
-Build and run:
-
-```bash
-docker build -t rss-feed-filter .
-docker run -p 3000:3000 --env-file .env rss-feed-filter
-```
+**Note:** The SQLite database requires a persistent volume. For cloud deployments without persistent storage, consider:
+- Using a mounted volume or persistent disk
+- Migrating to a cloud database (requires code modifications)
+- Using Docker-based hosting with volume support (e.g., Railway, Fly.io)
 
 ## API Endpoints
+
+### Onboarding
+
+- `GET /api/onboarding` - Check onboarding status
+- `POST /api/onboarding` - Complete onboarding and save initial settings
+
+### Settings
+
+- `GET /api/settings` - Get all settings
+- `POST /api/settings` - Update settings
 
 ### Filters Management
 
@@ -186,6 +198,11 @@ docker run -p 3000:3000 --env-file .env rss-feed-filter
 ### Feed
 
 - `GET /api/feed` - Fetch current RSS feed
+
+### Notifications
+
+- `GET /api/notifications` - Get notification history
+- `DELETE /api/notifications` - Clear all notifications
 
 ## Configuration
 
@@ -213,8 +230,8 @@ The `CRON_SCHEDULE` uses standard cron syntax:
 
 ### Notifications not sending
 
-1. Check `TEAMS_WEBHOOK_URL` is correct
-2. Verify `ENABLE_NOTIFICATIONS=true`
+1. Check Discord webhook URL is correct in Settings
+2. Verify "Enable Notifications" is toggled on in Settings
 3. Check server logs for errors
 4. Test webhook manually using the "Check Feed Now" button
 

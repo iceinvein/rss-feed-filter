@@ -54,9 +54,23 @@ function initializeSchema() {
       processed_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
 
+    -- Notifications table (stores sent notifications)
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guid TEXT NOT NULL,
+      title TEXT NOT NULL,
+      link TEXT NOT NULL,
+      description TEXT NOT NULL,
+      pub_date TEXT NOT NULL,
+      matched_filters TEXT NOT NULL,
+      sent_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
     -- Create indexes
     CREATE INDEX IF NOT EXISTS idx_filters_enabled ON filters(enabled);
     CREATE INDEX IF NOT EXISTS idx_processed_items_processed_at ON processed_items(processed_at);
+    CREATE INDEX IF NOT EXISTS idx_notifications_sent_at ON notifications(sent_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_notifications_guid ON notifications(guid);
   `);
 
   // Insert default settings if not exists
@@ -285,6 +299,92 @@ export const processedItemsDb = {
     const result = getDb()
       .prepare("DELETE FROM processed_items WHERE processed_at < ?")
       .run(cutoffTime);
+
+    return result.changes;
+  },
+};
+
+// Notifications database operations
+export const notificationsDb = {
+  add(
+    guid: string,
+    title: string,
+    link: string,
+    description: string,
+    pubDate: string,
+    matchedFilters: string[],
+  ) {
+    getDb()
+      .prepare(
+        "INSERT INTO notifications (guid, title, link, description, pub_date, matched_filters) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run(guid, title, link, description, pubDate, JSON.stringify(matchedFilters));
+  },
+
+  getAll(limit: number = 100, offset: number = 0, searchQuery?: string) {
+    let query = "SELECT * FROM notifications";
+    const params: any[] = [];
+
+    if (searchQuery) {
+      query +=
+        " WHERE title LIKE ? OR description LIKE ? OR matched_filters LIKE ?";
+      const searchPattern = `%${searchQuery}%`;
+
+      params.push(searchPattern, searchPattern, searchPattern);
+    }
+
+    query += " ORDER BY sent_at DESC LIMIT ? OFFSET ?";
+    params.push(limit, offset);
+
+    return getDb().prepare(query).all(...params) as {
+      id: number;
+      guid: string;
+      title: string;
+      link: string;
+      description: string;
+      pub_date: string;
+      matched_filters: string;
+      sent_at: number;
+    }[];
+  },
+
+  getCount(searchQuery?: string) {
+    let query = "SELECT COUNT(*) as count FROM notifications";
+    const params: any[] = [];
+
+    if (searchQuery) {
+      query +=
+        " WHERE title LIKE ? OR description LIKE ? OR matched_filters LIKE ?";
+      const searchPattern = `%${searchQuery}%`;
+
+      params.push(searchPattern, searchPattern, searchPattern);
+    }
+
+    const result = getDb().prepare(query).get(...params) as { count: number };
+
+    return result.count;
+  },
+
+  delete(id: number) {
+    const result = getDb()
+      .prepare("DELETE FROM notifications WHERE id = ?")
+      .run(id);
+
+    return result.changes;
+  },
+
+  cleanup(daysToKeep: number = 30) {
+    const cutoffTime =
+      Math.floor(Date.now() / 1000) - daysToKeep * 24 * 60 * 60;
+    const result = getDb()
+      .prepare("DELETE FROM notifications WHERE sent_at < ?")
+      .run(cutoffTime);
+
+    return result.changes;
+  },
+
+  deleteAll() {
+    const result = getDb().prepare("DELETE FROM notifications").run();
 
     return result.changes;
   },

@@ -10,6 +10,7 @@ import {
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
+import { Bell, Radio, CheckCircle } from "lucide-react";
 import { Card, CardBody } from "@heroui/card";
 
 interface OnboardingModalProps {
@@ -99,7 +100,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
           {step === 1 && (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3 p-4 bg-primary-50 dark:bg-primary-900/10 rounded-lg">
-                <div className="text-4xl">🔔</div>
+                <Bell className="w-10 h-10 text-primary" />
                 <div>
                   <h3 className="font-semibold">Discord Notifications</h3>
                   <p className="text-sm text-default-600">
@@ -138,7 +139,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
           {step === 2 && (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3 p-4 bg-success-50 dark:bg-success-900/10 rounded-lg">
-                <div className="text-4xl">📡</div>
+                <Radio className="w-10 h-10 text-success" />
                 <div>
                   <h3 className="font-semibold">RSS Feed Configuration</h3>
                   <p className="text-sm text-default-600">
@@ -195,7 +196,7 @@ export function OnboardingModal({ isOpen, onComplete }: OnboardingModalProps) {
           {step === 3 && (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-3 p-4 bg-secondary-50 dark:bg-secondary-900/10 rounded-lg">
-                <div className="text-4xl">✅</div>
+                <CheckCircle className="w-10 h-10 text-secondary" />
                 <div>
                   <h3 className="font-semibold">Ready to Go!</h3>
                   <p className="text-sm text-default-600">

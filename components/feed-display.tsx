@@ -5,6 +5,7 @@ import type { FeedItem } from "@/types/feed";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Link } from "@heroui/link";
 import { Chip } from "@heroui/chip";
+import { Search } from "lucide-react";
 
 interface FeedDisplayProps {
   items: FeedItem[];
@@ -55,7 +56,7 @@ export function FeedDisplay({
       <CardBody className="gap-3 overflow-y-auto max-h-[calc(100vh-300px)]">
         {items.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔍</div>
+            <Search className="w-16 h-16 mx-auto mb-4 text-default-400" />
             <p className="text-lg font-medium text-default-700 mb-2">
               No matches found
             </p>

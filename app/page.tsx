@@ -1,6 +1,6 @@
 "use client";
 
-import type { FeedItem, Filter } from "@/types/feed";
+import type { Filter } from "@/types/feed";
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@heroui/button";
@@ -10,39 +10,71 @@ import { Card, CardBody } from "@heroui/card";
 
 import { FilterList } from "@/components/filter-list";
 import { FilterForm } from "@/components/filter-form";
-import { FeedDisplay } from "@/components/feed-display";
+import { NotificationsDisplay } from "@/components/notifications-display";
 import { SchedulerControl } from "@/components/scheduler-control";
 import { OnboardingModal } from "@/components/onboarding-modal";
-import { applyFilters } from "@/lib/filter";
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const NOTIFICATIONS_PER_PAGE = 20;
+
+interface Notification {
+  id: number;
+  guid: string;
+  title: string;
+  link: string;
+  description: string;
+  pubDate: string;
+  matchedFilters: string[];
+  sentAt: number;
+}
 
 export default function Home() {
   const [filters, setFilters] = useState<Filter[]>([]);
-  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<FeedItem[]>([]);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [totalNotifications, setTotalNotifications] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [showFilterForm, setShowFilterForm] = useState(false);
   const [editingFilter, setEditingFilter] = useState<Filter | undefined>();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
-  const fetchFeed = useCallback(async () => {
-    try {
-      const response = await fetch("/api/feed");
-      const data = await response.json();
+  const fetchNotifications = useCallback(
+    async (loadMore = false, search = searchQuery) => {
+      try {
+        if (loadMore) {
+          setLoadingMore(true);
+        } else {
+          setLoading(true);
+        }
 
-      if (data.items) {
-        setFeedItems(data.items);
-        setLastUpdated(data.lastUpdated);
+        const currentOffset = loadMore ? offset : 0;
+        const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+        const response = await fetch(
+          `/api/notifications?limit=${NOTIFICATIONS_PER_PAGE}&offset=${currentOffset}${searchParam}`,
+        );
+        const data = await response.json();
+
+        if (data.notifications) {
+          if (loadMore) {
+            setNotifications((prev) => [...prev, ...data.notifications]);
+          } else {
+            setNotifications(data.notifications);
+          }
+          setTotalNotifications(data.total);
+          setOffset(currentOffset + data.notifications.length);
+        }
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-    } catch (error) {
-      console.error("Error fetching feed:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [offset, searchQuery],
+  );
 
   // Check onboarding status on mount
   useEffect(() => {
@@ -82,21 +114,14 @@ export default function Home() {
     loadFilters();
   }, []);
 
-  // Fetch feed on mount and set up periodic refresh
+  // Fetch notifications on mount and set up periodic refresh
   useEffect(() => {
-    fetchFeed();
+    fetchNotifications();
 
-    const interval = setInterval(fetchFeed, REFRESH_INTERVAL);
+    const interval = setInterval(() => fetchNotifications(), REFRESH_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [fetchFeed]);
-
-  // Apply filters whenever filters or feed items change
-  useEffect(() => {
-    const filtered = applyFilters(feedItems, filters);
-
-    setFilteredItems(filtered);
-  }, [feedItems, filters]);
+  }, [fetchNotifications]);
 
   const handleSaveFilter = async (filter: Filter) => {
     try {
@@ -172,8 +197,54 @@ export default function Home() {
   };
 
   const handleRefresh = () => {
-    setLoading(true);
-    fetchFeed();
+    setOffset(0);
+    fetchNotifications();
+  };
+
+  const handleLoadMore = () => {
+    fetchNotifications(true);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setOffset(0);
+    fetchNotifications(false, query);
+  };
+
+  const handleDeleteNotification = async (id: number) => {
+    try {
+      const response = await fetch(`/api/notifications?id=${id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Remove from local state
+        setNotifications((prev) => prev.filter((n) => n.id !== id));
+        setTotalNotifications((prev) => prev - 1);
+      }
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (!confirm("Are you sure you want to delete all notifications?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/notifications", {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setNotifications([]);
+        setTotalNotifications(0);
+        setOffset(0);
+      }
+    } catch (error) {
+      console.error("Error clearing notifications:", error);
+    }
   };
 
   const handleOnboardingComplete = () => {
@@ -190,7 +261,7 @@ export default function Home() {
     );
   }
 
-  if (loading && feedItems.length === 0) {
+  if (loading && notifications.length === 0) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Spinner size="lg" />
@@ -199,10 +270,7 @@ export default function Home() {
   }
 
   const enabledFiltersCount = filters.filter((f) => f.enabled).length;
-  const matchRate =
-    feedItems.length > 0
-      ? ((filteredItems.length / feedItems.length) * 100).toFixed(1)
-      : "0";
+  const hasMore = notifications.length < totalNotifications;
 
   return (
     <div className="space-y-6">
@@ -229,21 +297,21 @@ export default function Home() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card className="bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 border-none">
             <CardBody className="gap-1">
-              <p className="text-sm text-default-600">Total Items</p>
+              <p className="text-sm text-default-600">Total Notifications</p>
               <p className="text-3xl font-bold text-primary">
-                {feedItems.length}
+                {totalNotifications}
               </p>
             </CardBody>
           </Card>
 
           <Card className="bg-gradient-to-br from-success-50 to-success-100 dark:from-success-900/20 dark:to-success-800/20 border-none">
             <CardBody className="gap-1">
-              <p className="text-sm text-default-600">Matched Items</p>
+              <p className="text-sm text-default-600">Loaded</p>
               <p className="text-3xl font-bold text-success">
-                {filteredItems.length}
+                {notifications.length}
               </p>
             </CardBody>
           </Card>
@@ -254,13 +322,6 @@ export default function Home() {
               <p className="text-3xl font-bold text-secondary">
                 {enabledFiltersCount}
               </p>
-            </CardBody>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-warning-50 to-warning-100 dark:from-warning-900/20 dark:to-warning-800/20 border-none">
-            <CardBody className="gap-1">
-              <p className="text-sm text-default-600">Match Rate</p>
-              <p className="text-3xl font-bold text-warning">{matchRate}%</p>
             </CardBody>
           </Card>
         </div>
@@ -280,12 +341,17 @@ export default function Home() {
           />
         </div>
 
-        {/* Feed Display */}
+        {/* Notifications Display */}
         <div className="lg:col-span-2">
-          <FeedDisplay
-            items={filteredItems}
-            lastUpdated={lastUpdated}
-            totalItems={feedItems.length}
+          <NotificationsDisplay
+            hasMore={hasMore}
+            loading={loadingMore}
+            notifications={notifications}
+            searchQuery={searchQuery}
+            onClearAll={handleClearAll}
+            onDelete={handleDeleteNotification}
+            onLoadMore={handleLoadMore}
+            onSearch={handleSearch}
           />
         </div>
       </div>
